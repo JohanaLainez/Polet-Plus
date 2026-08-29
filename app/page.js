@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ShoppingCart, User } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   const slides = [
@@ -39,63 +40,73 @@ export default function Home() {
       {/* NAVBAR */}
       <nav className="flex items-center justify-between bg-white px-8 py-4">
 
-        <div className="flex items-center gap-8">
-          <a
-          href="#"
-          className="text-2xl font-bold tracking-wide text-[#AD4E4F]"
-          >
-            POLET PLUS
-          </a>
-          
-          <button className="rounded-md bg-[#AD4E4F] px-7 py-3 text-white">
-            Inicio
-          </button>
+      {/* LADO IZQUIERDO */}
+      <div className="flex items-center gap-10">
 
-          <a
-            href="#catalogo"
-            className="text-gray-600 hover:text-[#AD4E4F]"
-          >
-            Catálogo
-          </a>
+       {/* NOMBRE DE LA TIENDA */}
+       <Link
+      href="/"
+      className="text-2xl font-semibold tracking-[0.15em] text-[#AD4E4F]"
+    >
+      POLET PLUS
+    </Link>
 
-          <a
-            href="#nosotros"
-            className="text-gray-600 hover:text-[#AD4E4F]"
-          >
-            Sobre nosotros
-          </a>
+      {/* MENÚ */}
+      <div className="flex items-center gap-8">
 
-          <a
-            href="#contacto"
-            className="text-gray-600 hover:text-[#AD4E4F]"
-          >
-            Contacto
-          </a>
-        </div>
+      <Link
+        href="/"
+        className="rounded-md bg-[#AD4E4F] px-7 py-3 text-white"
+      >
+        Inicio
+      </Link>
 
-        <div className="flex items-center gap-6">
+     <Link href="/catalogo">
+      Catálogo
+     </Link>
 
-          {/* CARRITO */}
-        <button
-         className="rounded-md bg-[#AD4E4F] p-3 text-white transition hover:opacity-90"
-         aria-label="Carrito"
-        >
-        <ShoppingCart size={20} />
-        </button>
+      <a
+        href="#nosotros"
+        className="text-gray-600 transition hover:text-[#AD4E4F]"
+      >
+        Sobre nosotros
+      </a>
 
-       {/* CUENTA */}
-       <button
-       className="flex items-center gap-2 text-gray-600 transition hover:text-[#AD4E4F]"
-       aria-label="Cuenta"
-       >
-       <span>Cuenta</span>
-       <User size={20} />
-  </button>
+      <a
+        href="#contacto"
+        className="text-gray-600 transition hover:text-[#AD4E4F]"
+      >
+        Contacto
+      </a>
+
+    </div>
 
   </div>
-          
 
-      </nav>
+       {/* LADO DERECHO */}
+       <div className="flex items-center gap-6">
+
+       {/* CARRITO */}
+       <button
+      className="rounded-md bg-[#AD4E4F] p-3 text-white transition hover:opacity-90"
+      aria-label="Carrito"
+    >
+      <ShoppingCart size={20} />
+    </button>
+
+       {/* CUENTA */}
+       <Link
+      href="/login"
+      className="flex items-center gap-2 text-gray-600 transition hover:text-[#AD4E4F]"
+    >
+      <span>Cuenta</span>
+      <User size={20} />
+    </Link>
+
+  </div>
+
+</nav>
+      
 
       {/* HERO PRINCIPAL */}
       <section className="bg-[#efd2c7] px-5 py-10 md:px-10">
@@ -236,23 +247,23 @@ export default function Home() {
             <div className="mb-5 flex h-[420px] items-center justify-center overflow-hidden rounded-xl bg-white p-4">
 
               <img
-                src="/DRESS1.jpg"
-                alt="Vestido verde con rayas"
+                src="/Vestido fucsia.png"
+                alt="Vestido Fucsia"
                 className="max-h-full max-w-full object-contain"
               />
 
             </div>
 
             <h3 className="text-xl font-semibold">
-              Vestido Verde con rayas
+              Vestido Fucsia
             </h3>
 
             <p className="mt-2 text-lg">
-              $20.00
+              $6.50
             </p>
 
             <p className="mt-2 text-gray-500">
-              Tallas: XS, S, M, L
+              Talla: XS
             </p>
 
             <button className="mt-5 rounded-full bg-[#AD4E4F] px-6 py-3 text-white transition hover:opacity-90">
@@ -267,23 +278,23 @@ export default function Home() {
             <div className="mb-5 flex h-[420px] items-center justify-center overflow-hidden rounded-xl bg-white p-4">
 
               <img
-                src="/DRESS2.jpg"
-                alt="Vestido Rosa Pastel"
+                src="/Vestido de noche color negro.jpeg"
+                alt="Vestido de noche color negro"
                 className="max-h-full max-w-full object-contain"
               />
 
             </div>
 
             <h3 className="text-xl font-semibold">
-              Vestido Rosa Pastel
+              Vestido de noche color negro
             </h3>
 
             <p className="mt-2 text-lg">
-              $18.00
+              $11.99
             </p>
 
             <p className="mt-2 text-gray-500">
-              Tallas: XS, S, M, L
+              Talla: 3XL
             </p>
 
             <button className="mt-5 rounded-full bg-[#AD4E4F] px-6 py-3 text-white transition hover:opacity-90">
@@ -298,23 +309,23 @@ export default function Home() {
             <div className="mb-5 flex h-[420px] items-center justify-center overflow-hidden rounded-xl bg-white p-4">
 
               <img
-                src="/DRESS3.jpg"
-                alt="Conjunto Amarillo"
+                src="/Vestido corto de rayas.png"
+                alt="Vestido corto de rayas"
                 className="max-h-full max-w-full object-contain"
               />
 
             </div>
 
             <h3 className="text-xl font-semibold">
-              Conjunto Amarillo
+              Vestido corto de rayas
             </h3>
 
             <p className="mt-2 text-lg">
-              $20.00
+              $4.99
             </p>
 
             <p className="mt-2 text-gray-500">
-              Tallas: XS, S, M, L, XL
+              Talla: M
             </p>
 
             <button className="mt-5 rounded-full bg-[#AD4E4F] px-6 py-3 text-white transition hover:opacity-90">

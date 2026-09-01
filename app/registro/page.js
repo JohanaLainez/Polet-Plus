@@ -2,40 +2,89 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+
+import { auth, db } from "../../lib/firebase";
 
 export default function Registro() {
+  const router = useRouter();
+
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [confirmarPassword, setConfirmarPassword] = useState("");
   const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
 
-  const manejarRegistro = (e) => {
+  const manejarRegistro = async (e) => {
     e.preventDefault();
+    setError("");
 
+    // VALIDAR CAMPOS VACÍOS
     if (!nombre || !correo || !password || !confirmarPassword) {
       setError("Por favor, completa todos los campos.");
       return;
     }
 
+    // VALIDAR CONTRASEÑAS
     if (password !== confirmarPassword) {
       setError("Las contraseñas no coinciden.");
       return;
     }
 
-    setError("");
+    // FIREBASE EXIGE MÍNIMO 6 CARACTERES
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
 
-    console.log({
-      nombre,
-      correo,
-      password,
-    });
+    try {
+      setCargando(true);
 
-    alert("Registro completado correctamente.");
+      // 1. CREAR USUARIO EN FIREBASE AUTHENTICATION
+      const credencial = await createUserWithEmailAndPassword(
+        auth,
+        correo,
+        password
+      );
+
+      // 2. GUARDAR DATOS DEL USUARIO EN FIRESTORE
+      await setDoc(doc(db, "users", credencial.user.uid), {
+        nombre: nombre,
+        email: correo,
+        rol: "cliente",
+        fechaRegistro: new Date(),
+      });
+
+      alert("Cuenta creada correctamente.");
+
+      // 3. ENVIAR AL LOGIN
+      router.push("/login");
+
+    } catch (error) {
+      console.error("Error al registrar usuario:", error);
+
+      if (error.code === "auth/email-already-in-use") {
+        setError("Este correo electrónico ya está registrado.");
+      } else if (error.code === "auth/invalid-email") {
+        setError("El correo electrónico no es válido.");
+      } else if (error.code === "auth/weak-password") {
+        setError("La contraseña debe tener al menos 6 caracteres.");
+      } else {
+        setError("Ocurrió un error al crear la cuenta.");
+      }
+
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#efd2c7] px-4">
+
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
 
         {/* NOMBRE DE LA TIENDA */}
@@ -99,7 +148,7 @@ export default function Registro() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Ingresa tu contraseña"
+              placeholder="Mínimo 6 caracteres"
               className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-[#AD4E4F]"
             />
           </div>
@@ -129,9 +178,10 @@ export default function Registro() {
           {/* BOTÓN */}
           <button
             type="submit"
-            className="mt-7 w-full rounded-lg bg-[#AD4E4F] py-3 font-semibold text-white transition hover:opacity-90"
+            disabled={cargando}
+            className="mt-7 w-full rounded-lg bg-[#AD4E4F] py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Crear cuenta
+            {cargando ? "Creando cuenta..." : "Crear cuenta"}
           </button>
 
         </form>
@@ -158,6 +208,7 @@ export default function Registro() {
         </div>
 
       </div>
+
     </main>
   );
 }

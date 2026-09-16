@@ -82,7 +82,7 @@ export default function AdminDashboard() {
     return () => cancelarObservador();
   }, [router]);
 
-  // CERRAR SESIÓN
+  // CERRAR SESION
   const cerrarSesion = async () => {
     try {
       await signOut(auth);

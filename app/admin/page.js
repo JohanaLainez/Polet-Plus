@@ -144,7 +144,7 @@ export default function AdminDashboard() {
 
           {/* PRODUCTOS */}
           <Link
-            href="/admin/productos"
+            href="/productos"
             className="flex items-center gap-3 text-gray-500 transition hover:text-[#AD4E4F]"
           >
             <Package size={20} />

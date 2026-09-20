@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Polet Plus
 
-## Getting Started
+Polet Plus es una aplicación web de tienda de ropa desarrollada como proyecto académico utilizando React y Next.js.
 
-First, run the development server:
+El sistema permite a los clientes registrarse, iniciar sesión, consultar productos, agregar artículos al carrito, realizar pedidos y revisar su información personal e historial de compras.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+También incluye un módulo administrativo para gestionar pedidos y controlar diferentes funciones del sistema.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Objetivo del proyecto
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Desarrollar una aplicación web para la gestión de una tienda de ropa en línea, facilitando el proceso de compra para los clientes y permitiendo la administración de pedidos por parte del personal encargado.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Tecnologías utilizadas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Frontend
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- React
+- Next.js
+- JavaScript
+- Tailwind CSS
+- Lucide React
 
-## Deploy on Vercel
+### Backend y base de datos
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Firebase Authentication
+- Cloud Firestore
+- Firebase SDK
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Control de versiones
+
+- Git
+- GitHub
+
+### Despliegue
+
+- Vercel
+
+Enlace publico:
+https://polet-plus.vercel.app/
+
+## Integrantes del proyecto
+
+1. Johana Estefani Ramirez Lainez RL242914 
+2. Jafet Bezaleel Rivera Reinado RR231780 
+3. Jeferson Wilfredo Cruz Hernández CH231820 
+4. Daniel José Menjívar Escobar ME180718
+5. Alan Isai Delgado Elias DE232709 
+
+## Arquitectura del proyecto
+
+El proyecto está organizado separando la interfaz, la lógica y el acceso a datos.
+
+### UI
+
+Las páginas y componentes visuales se encuentran principalmente en:
+
+```text
+app/
+components/

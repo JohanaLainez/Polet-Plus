@@ -1,861 +1,2064 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
+  ScrollView,
   Image,
   Modal,
-  ScrollView,
-  ActivityIndicator,
   Alert,
-  StyleSheet,
-  StatusBar,
+  ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+
 import { router } from "expo-router";
+
+import {
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
+
 import {
   collection,
-  onSnapshot,
   addDoc,
+  serverTimestamp,
   doc,
   getDoc,
-  serverTimestamp,
+  onSnapshot,
 } from "firebase/firestore";
-import { db, auth } from "../lib/firebase";
 
-// =========================
-// PRODUCTOS BASE (FIJOS)
-// =========================
+import { auth, db } from "../lib/firebase";
+
+// ==========================================
+// PRODUCTOS BASE
+// ==========================================
+
 const productosBase = [
   {
     id: "base-1",
     nombre: "Vestido blanco con flores",
     precio: 5.99,
-    imagen: require("../../assets/Vestido blanco con flores.png"),
+    imagen: require(
+      "../../assets/images/Vestido blanco con flores.png"
+    ),
     tallas: ["XS"],
   },
   {
     id: "base-2",
     nombre: "Body Naranja",
     precio: 6.5,
-    imagen: require("../../assets/Body naranja.png"),
+    imagen: require(
+      "../../assets/images/Body naranja.png"
+    ),
     tallas: ["S"],
   },
   {
     id: "base-3",
     nombre: "Vestido playero",
     precio: 5.99,
-    imagen: require("../../assets/Vestido playero.png"),
+    imagen: require(
+      "../../assets/images/Vestido playero.png"
+    ),
     tallas: ["M"],
   },
   {
     id: "base-4",
     nombre: "Body Azul",
     precio: 4.99,
-    imagen: require("../../assets/Body azul.png"),
+    imagen: require(
+      "../../assets/images/Body azul.png"
+    ),
     tallas: ["L"],
   },
   {
     id: "base-5",
     nombre: "Body negro",
     precio: 5.99,
-    imagen: require("../../assets/Body negro.png"),
+    imagen: require(
+      "../../assets/images/Body negro.png"
+    ),
     tallas: ["S"],
   },
   {
     id: "base-6",
     nombre: "Vestido largo negro",
     precio: 5.99,
-    imagen: require("../../assets/Vestido largo negro.jpeg"),
+    imagen: require(
+      "../../assets/images/Vestido largo negro.jpeg"
+    ),
     tallas: ["XL"],
   },
 ];
 
+// ==========================================
+// TALLAS
+// ==========================================
+
+const tallasDisponibles = [
+  "Todas",
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+];
+
 export default function Catalogo() {
-  const [productos, setProductos] = useState<any[]>(productosBase);
-  const [busqueda, setBusqueda] = useState("");
-  const [tallaSeleccionada, setTallaSeleccionada] = useState("Todas");
+  // ========================================
+  // ESTADOS GENERALES
+  // ========================================
 
-  // Carrito de compras
-  const [carrito, setCarrito] = useState<any[]>([]);
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [cargando, setCargando] =
+    useState(true);
 
-  // =========================
-  // OBTENER PRODUCTOS DE FIRESTORE
-  // =========================
+  const [nombreCliente, setNombreCliente] =
+    useState("Cliente");
+
+  const [menuAbierto, setMenuAbierto] =
+    useState(false);
+
+  // ========================================
+  // PRODUCTOS
+  // ========================================
+
+  const [productos, setProductos] =
+    useState<any[]>(productosBase);
+
+  // ========================================
+  // FILTROS
+  // ========================================
+
+  const [busqueda, setBusqueda] =
+    useState("");
+
+  const [
+    tallaSeleccionada,
+    setTallaSeleccionada,
+  ] = useState("Todas");
+
+  // ========================================
+  // CARRITO
+  // ========================================
+
+  const [carrito, setCarrito] =
+    useState<any[]>([]);
+
+  const [
+    carritoAbierto,
+    setCarritoAbierto,
+  ] = useState(false);
+
+  const [guardando, setGuardando] =
+    useState(false);
+
+  // ========================================
+  // VERIFICAR USUARIO
+  // ========================================
+
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "productos"),
-      (snapshot) => {
-        const productosFirestore = snapshot.docs.map((documento) => ({
-          id: documento.id,
-          ...documento.data(),
-        }));
-        setProductos([...productosBase, ...productosFirestore]);
-      },
-      (error) => {
-        console.error("Error al obtener productos de Firestore:", error);
-      }
-    );
+    const cancelarObservador =
+      onAuthStateChanged(
+        auth,
+        async (usuario) => {
+          if (!usuario) {
+            router.replace("/login");
+            return;
+          }
 
-    return () => unsub();
+          try {
+            const referenciaUsuario = doc(
+              db,
+              "users",
+              usuario.uid
+            );
+
+            const documentoUsuario =
+              await getDoc(
+                referenciaUsuario
+              );
+
+            if (
+              !documentoUsuario.exists()
+            ) {
+              router.replace("/login");
+              return;
+            }
+
+            const datosUsuario =
+              documentoUsuario.data();
+
+            // Si es admin, enviarlo
+            // a su dashboard
+            if (
+              datosUsuario.rol === "admin"
+            ) {
+              router.replace("/admin");
+              return;
+            }
+
+            if (
+              datosUsuario.rol !==
+              "cliente"
+            ) {
+              router.replace("/login");
+              return;
+            }
+
+            setNombreCliente(
+              datosUsuario.nombre ||
+                "Cliente"
+            );
+          } catch (error) {
+            console.log(
+              "Error verificando usuario:",
+              error
+            );
+
+            Alert.alert(
+              "Error",
+              "No se pudo verificar el usuario."
+            );
+          } finally {
+            setCargando(false);
+          }
+        }
+      );
+
+    return () =>
+      cancelarObservador();
   }, []);
 
-  // =========================
-  // FUNCIONES DEL CARRITO
-  // =========================
-  const agregarAlCarrito = (producto: any) => {
-    setCarrito((prevCarrito) => {
-      const existe = prevCarrito.find((item) => item.id === producto.id);
-      if (existe) {
-        return prevCarrito.map((item) =>
-          item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item
+  // ========================================
+  // PRODUCTOS DE FIRESTORE
+  // ========================================
+
+  useEffect(() => {
+    const cancelarProductos =
+      onSnapshot(
+        collection(db, "productos"),
+
+        (snapshot) => {
+          const productosFirestore =
+            snapshot.docs.map(
+              (documento) => ({
+                id: documento.id,
+                ...documento.data(),
+              })
+            );
+
+          setProductos([
+            ...productosBase,
+            ...productosFirestore,
+          ]);
+        },
+
+        (error) => {
+          console.log(
+            "Error obteniendo productos:",
+            error
+          );
+        }
+      );
+
+    return () =>
+      cancelarProductos();
+  }, []);
+
+  // ========================================
+  // FILTRAR PRODUCTOS
+  // ========================================
+
+  const productosFiltrados =
+    productos.filter((producto) => {
+      const nombre =
+        producto.nombre || "";
+
+      const coincideNombre =
+        nombre
+          .toLowerCase()
+          .includes(
+            busqueda.toLowerCase()
+          );
+
+      const tallasProducto =
+        Array.isArray(
+          producto.tallas
+        )
+          ? producto.tallas
+          : producto.talla
+          ? [producto.talla]
+          : [];
+
+      const coincideTalla =
+        tallaSeleccionada ===
+          "Todas" ||
+        tallasProducto.includes(
+          tallaSeleccionada
+        );
+
+      return (
+        coincideNombre &&
+        coincideTalla
+      );
+    });
+
+  // ========================================
+  // AGREGAR AL CARRITO
+  // ========================================
+
+  const agregarAlCarrito = (
+    producto: any
+  ) => {
+    setCarrito(
+      (carritoActual) => {
+        const existe =
+          carritoActual.find(
+            (item) =>
+              item.id === producto.id
+          );
+
+        if (existe) {
+          return carritoActual.map(
+            (item) =>
+              item.id === producto.id
+                ? {
+                    ...item,
+                    cantidad:
+                      item.cantidad + 1,
+                  }
+                : item
+          );
+        }
+
+        return [
+          ...carritoActual,
+          {
+            ...producto,
+            cantidad: 1,
+          },
+        ];
+      }
+    );
+  };
+
+  // ========================================
+  // ELIMINAR DEL CARRITO
+  // ========================================
+
+  const eliminarDelCarrito = (
+    productoId: string
+  ) => {
+    setCarrito(
+      carrito.filter(
+        (item) =>
+          item.id !== productoId
+      )
+    );
+  };
+
+  // ========================================
+  // VACIAR CARRITO
+  // ========================================
+
+  const vaciarCarrito = () => {
+    setCarrito([]);
+  };
+
+  // ========================================
+  // CANTIDAD POR PRODUCTO
+  // ========================================
+
+  const obtenerCantidadEnCarrito = (
+    productoId: string
+  ) => {
+    const producto =
+      carrito.find(
+        (item) =>
+          item.id === productoId
+      );
+
+    return producto
+      ? producto.cantidad
+      : 0;
+  };
+
+  // ========================================
+  // TOTAL DE ARTÍCULOS
+  // ========================================
+
+  const totalItems =
+    carrito.reduce(
+      (total, item) =>
+        total + item.cantidad,
+      0
+    );
+
+  // ========================================
+  // TOTAL DEL CARRITO
+  // ========================================
+
+  const totalCarrito =
+    carrito.reduce(
+      (total, item) =>
+        total +
+        Number(item.precio || 0) *
+          item.cantidad,
+      0
+    );
+
+  // ========================================
+  // CONFIRMAR PEDIDO
+  // ========================================
+
+  const confirmarPedido =
+    async () => {
+      if (
+        carrito.length === 0
+      ) {
+        return;
+      }
+
+      const usuario =
+        auth.currentUser;
+
+      if (!usuario) {
+        Alert.alert(
+          "Sesión requerida",
+          "Debes iniciar sesión antes de realizar un pedido."
+        );
+
+        setCarritoAbierto(false);
+
+        return;
+      }
+
+      try {
+        setGuardando(true);
+
+        let nombre =
+          nombreCliente ||
+          "Cliente";
+
+        const referenciaUsuario =
+          doc(
+            db,
+            "users",
+            usuario.uid
+          );
+
+        const documentoUsuario =
+          await getDoc(
+            referenciaUsuario
+          );
+
+        if (
+          documentoUsuario.exists()
+        ) {
+          const datosUsuario =
+            documentoUsuario.data();
+
+          nombre =
+            datosUsuario.nombre ||
+            nombreCliente ||
+            "Cliente";
+        }
+
+        await addDoc(
+          collection(
+            db,
+            "pedidos"
+          ),
+          {
+            clienteNombre:
+              nombre,
+
+            clienteEmail:
+              usuario.email ||
+              "Sin correo",
+
+            usuarioId:
+              usuario.uid,
+
+            items:
+              carrito.map(
+                (item) => ({
+                  id: item.id,
+                  nombre:
+                    item.nombre,
+                  precio:
+                    Number(
+                      item.precio
+                    ) || 0,
+                  cantidad:
+                    item.cantidad,
+
+                  tallas:
+                    item.tallas ||
+                    [],
+
+                  talla:
+                    item.talla ||
+                    null,
+                })
+              ),
+
+            total:
+              parseFloat(
+                totalCarrito.toFixed(
+                  2
+                )
+              ),
+
+            estado:
+              "Pendiente",
+
+            fecha:
+              serverTimestamp(),
+          }
+        );
+
+        Alert.alert(
+          "Pedido realizado",
+          "¡Tu pedido fue realizado con éxito!"
+        );
+
+        vaciarCarrito();
+
+        setCarritoAbierto(false);
+      } catch (error) {
+        console.log(
+          "Error creando pedido:",
+          error
+        );
+
+        Alert.alert(
+          "Error",
+          "No se pudo realizar el pedido. Intenta nuevamente."
+        );
+      } finally {
+        setGuardando(false);
+      }
+    };
+
+  // ========================================
+  // CERRAR SESIÓN
+  // ========================================
+
+  const cerrarSesion =
+    async () => {
+      try {
+        await signOut(auth);
+
+        setMenuAbierto(false);
+
+        router.replace("/");
+      } catch (error) {
+        console.log(
+          "Error cerrando sesión:",
+          error
         );
       }
-      return [...prevCarrito, { ...producto, cantidad: 1 }];
-    });
-  };
+    };
 
-  const eliminarDelCarrito = (productoId: string) => {
-    setCarrito((prevCarrito) => prevCarrito.filter((item) => item.id !== productoId));
-  };
+  // ========================================
+  // OBTENER IMAGEN
+  // ========================================
 
-  const vaciarCarrito = () => setCarrito([]);
-
-  const totalItems = carrito.reduce((acc, item) => acc + item.cantidad, 0);
-  const totalCarrito = carrito.reduce(
-    (acc, item) => acc + (Number(item.precio) || 0) * item.cantidad,
-    0
-  );
-
-  const obtenerCantidadEnCarrito = (productoId: string) => {
-    const item = carrito.find((i) => i.id === productoId);
-    return item ? item.cantidad : 0;
-  };
-
-  // =========================
-  // FILTRAR PRODUCTOS
-  // =========================
-  const productosFiltrados = productos.filter((producto: any) => {
-    const coincideNombre = (producto.nombre || "")
-      .toLowerCase()
-      .includes(busqueda.toLowerCase());
-
-    const tallasProducto = Array.isArray(producto.tallas)
-      ? producto.tallas
-      : producto.talla
-      ? [producto.talla]
-      : [];
-
-    const coincideTalla =
-      tallaSeleccionada === "Todas" || tallasProducto.includes(tallaSeleccionada);
-
-    return coincideNombre && coincideTalla;
-  });
-
-  // =========================
-  // CONFIRMAR PEDIDO
-  // =========================
-  const confirmarPedido = async () => {
-    if (carrito.length === 0) return;
-
-    const usuario = auth.currentUser;
-
-    if (!usuario) {
-      Alert.alert(
-        "Sesión requerida",
-        "Debes iniciar sesión antes de realizar un pedido."
-      );
-      setModalAbierto(false);
-      router.push("/login");
-      return;
+  const obtenerImagen = (
+    producto: any
+  ) => {
+    // Las imágenes locales
+    // importadas con require()
+    // son números en React Native
+    if (
+      typeof producto.imagen ===
+      "number"
+    ) {
+      return producto.imagen;
     }
 
-    setGuardando(true);
-
-    try {
-      let nombreCliente = "Cliente";
-      const referenciaUsuario = doc(db, "users", usuario.uid);
-      const documentoUsuario = await getDoc(referenciaUsuario);
-
-      if (documentoUsuario.exists()) {
-        const datosUsuario = documentoUsuario.data();
-        nombreCliente =
-          datosUsuario.nombre ||
-          usuario.displayName ||
-          usuario.email?.split("@")[0] ||
-          "Cliente";
-      } else {
-        nombreCliente =
-          usuario.displayName || usuario.email?.split("@")[0] || "Cliente";
-      }
-
-      await addDoc(collection(db, "pedidos"), {
-        clienteNombre: nombreCliente,
-        clienteEmail: usuario.email || "Sin correo",
-        usuarioId: usuario.uid,
-        items: carrito,
-        total: parseFloat(totalCarrito.toFixed(2)),
-        estado: "Pendiente",
-        fecha: serverTimestamp(),
-      });
-
-      Alert.alert("¡Éxito!", "¡Pedido realizado con éxito!");
-      vaciarCarrito();
-      setModalAbierto(false);
-    } catch (error) {
-      console.error("Error al realizar el pedido:", error);
-      Alert.alert("Error", "No se pudo realizar el pedido. Intenta nuevamente.");
-    } finally {
-      setGuardando(false);
+    // Productos de Firebase
+    // pueden traer una URL
+    if (
+      typeof producto.imagen ===
+        "string" &&
+      producto.imagen.startsWith(
+        "http"
+      )
+    ) {
+      return {
+        uri: producto.imagen,
+      };
     }
+
+    return require(
+      "../../assets/images/expo-logo.png"
+    );
   };
 
-  const opcionesTalla = ["Todas", "XS", "S", "M", "L", "XL"];
+  // ========================================
+  // PANTALLA DE CARGA
+  // ========================================
+
+  if (cargando) {
+    return (
+      <View
+        style={styles.cargando}
+      >
+        <ActivityIndicator
+          size="large"
+          color="#AD4E4F"
+        />
+
+        <Text
+          style={
+            styles.cargandoTexto
+          }
+        >
+          Cargando catálogo...
+        </Text>
+      </View>
+    );
+  }
+
+  // ========================================
+  // INTERFAZ
+  // ========================================
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+    <View style={styles.pantalla}>
+      {/* =================================
+          NAVBAR
+      ================================= */}
 
-      {/* NAVBAR */}
       <View style={styles.navbar}>
-        <TouchableOpacity onPress={() => router.push("/")}>
-          <Text style={styles.brandText}>POLET PLUS</Text>
+        <TouchableOpacity
+          onPress={() =>
+            router.replace(
+              "/home"
+            )
+          }
+        >
+          <Text style={styles.logo}>
+            POLET PLUS
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.navRight}>
+        <View
+          style={
+            styles.navbarDerecha
+          }
+        >
+          {/* CARRITO */}
+
           <TouchableOpacity
-            style={styles.cartIconButton}
-            onPress={() => setModalAbierto(true)}
-            activeOpacity={0.8}
+            style={
+              styles.botonNavbar
+            }
+            onPress={() =>
+              setCarritoAbierto(
+                true
+              )
+            }
           >
-            <Text style={styles.cartIconText}>🛒</Text>
+            <Text
+              style={
+                styles.carritoIcono
+              }
+            >
+              🛒
+            </Text>
+
             {totalItems > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{totalItems}</Text>
+              <View
+                style={
+                  styles.contador
+                }
+              >
+                <Text
+                  style={
+                    styles.contadorTexto
+                  }
+                >
+                  {totalItems}
+                </Text>
               </View>
             )}
+          </TouchableOpacity>
+
+          {/* MENÚ */}
+
+          <TouchableOpacity
+            style={
+              styles.botonNavbar
+            }
+            onPress={() =>
+              setMenuAbierto(true)
+            }
+          >
+            <Text
+              style={
+                styles.menuIcono
+              }
+            >
+              ☰
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* ENCABEZADO DE SECCIÓN */}
-        <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>CATALOGO</Text>
-          <Text style={styles.headerSubtitle}>
-            Descubre nuestras prendas disponibles.
+      {/* =================================
+          CONTENIDO
+      ================================= */}
+
+      <ScrollView
+        showsVerticalScrollIndicator={
+          false
+        }
+      >
+        {/* =================================
+            ENCABEZADO
+        ================================= */}
+
+        <View
+          style={
+            styles.encabezado
+          }
+        >
+          <Text
+            style={
+              styles.titulo
+            }
+          >
+            Catálogo
+          </Text>
+
+          <Text
+            style={
+              styles.subtitulo
+            }
+          >
+            Descubre nuestras
+            prendas disponibles.
           </Text>
         </View>
 
-        {/* BUSCADOR Y FILTRO DE TALLAS */}
-        <View style={styles.filterCard}>
+        {/* =================================
+            BUSCADOR
+        ================================= */}
+
+        <View
+          style={
+            styles.filtrosContenedor
+          }
+        >
           <TextInput
-            style={styles.searchInput}
+            style={styles.buscador}
             placeholder="Buscar producto..."
-            placeholderTextColor="#888"
+            placeholderTextColor="#999"
             value={busqueda}
-            onChangeText={setBusqueda}
+            onChangeText={
+              setBusqueda
+            }
           />
+
+          {/* TALLAS */}
+
+          <Text
+            style={
+              styles.filtroTitulo
+            }
+          >
+            Filtrar por talla
+          </Text>
 
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tallasScroll}
+            showsHorizontalScrollIndicator={
+              false
+            }
+            contentContainerStyle={
+              styles.tallasContenedor
+            }
           >
-            {opcionesTalla.map((talla) => {
-              const activa = tallaSeleccionada === talla;
-              return (
+            {tallasDisponibles.map(
+              (talla) => (
                 <TouchableOpacity
                   key={talla}
-                  style={[styles.tallaPill, activa && styles.tallaPillActive]}
-                  onPress={() => setTallaSeleccionada(talla)}
+                  style={[
+                    styles.tallaBoton,
+
+                    tallaSeleccionada ===
+                    talla
+                      ? styles.tallaActiva
+                      : styles.tallaInactiva,
+                  ]}
+                  onPress={() =>
+                    setTallaSeleccionada(
+                      talla
+                    )
+                  }
                 >
                   <Text
                     style={[
-                      styles.tallaPillText,
-                      activa && styles.tallaPillTextActive,
+                      styles.tallaTexto,
+
+                      tallaSeleccionada ===
+                      talla
+                        ? styles.tallaTextoActivo
+                        : styles.tallaTextoInactivo,
                     ]}
                   >
-                    {talla === "Todas" ? "Todas las tallas" : talla}
+                    {talla}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
+              )
+            )}
           </ScrollView>
         </View>
 
-        {/* GRID DE PRODUCTOS */}
-        {productosFiltrados.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No se encontraron productos.</Text>
-          </View>
-        ) : (
-          <View style={styles.gridContainer}>
-            {productosFiltrados.map((producto: any) => {
-              const cantidad = obtenerCantidadEnCarrito(producto.id);
-              const precioNumerico = Number(producto.precio) || 0;
+        {/* =================================
+            PRODUCTOS
+        ================================= */}
 
-              return (
-                <View key={producto.id} style={styles.productCard}>
-                  <View style={styles.imageContainer}>
-                    <Image
-                      source={
-                        typeof producto.imagen === "string"
-                          ? { uri: producto.imagen }
-                          : producto.imagen
-                      }
-                      style={styles.productImage}
-                      resizeMode="contain"
-                    />
-                  </View>
+        <View
+          style={
+            styles.productosSeccion
+          }
+        >
+          {productosFiltrados.length ===
+          0 ? (
+            <Text
+              style={
+                styles.sinProductos
+              }
+            >
+              No se encontraron
+              productos.
+            </Text>
+          ) : (
+            productosFiltrados.map(
+              (producto) => {
+                const cantidad =
+                  obtenerCantidadEnCarrito(
+                    producto.id
+                  );
 
-                  <Text style={styles.productTitle} numberOfLines={2}>
-                    {producto.nombre}
-                  </Text>
+                const precio =
+                  Number(
+                    producto.precio
+                  ) || 0;
 
-                  <Text style={styles.productPrice}>
-                    ${precioNumerico.toFixed(2)}
-                  </Text>
+                const tallas =
+                  Array.isArray(
+                    producto.tallas
+                  )
+                    ? producto.tallas.join(
+                        ", "
+                      )
+                    : producto.talla ||
+                      "Única";
 
-                  <Text style={styles.productSizes}>
-                    Tallas:{" "}
-                    {Array.isArray(producto.tallas)
-                      ? producto.tallas.join(", ")
-                      : producto.talla || "Única"}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => agregarAlCarrito(producto)}
-                    activeOpacity={0.8}
+                return (
+                  <View
+                    key={
+                      producto.id
+                    }
+                    style={
+                      styles.productoCard
+                    }
                   >
-                    {cantidad > 0 ? (
-                      <View style={styles.addMoreRow}>
-                        <Text style={styles.addButtonText}>Agregar más</Text>
-                        <View style={styles.countCircle}>
-                          <Text style={styles.countCircleText}>{cantidad}</Text>
+                    <View
+                      style={
+                        styles.imagenContenedor
+                      }
+                    >
+                      <Image
+                        source={obtenerImagen(
+                          producto
+                        )}
+                        style={
+                          styles.productoImagen
+                        }
+                      />
+                    </View>
+
+                    <Text
+                      style={
+                        styles.productoNombre
+                      }
+                    >
+                      {
+                        producto.nombre
+                      }
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.productoPrecio
+                      }
+                    >
+                      $
+                      {precio.toFixed(
+                        2
+                      )}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.productoTalla
+                      }
+                    >
+                      Tallas:{" "}
+                      {tallas}
+                    </Text>
+
+                    <TouchableOpacity
+                      style={
+                        styles.botonAgregar
+                      }
+                      onPress={() =>
+                        agregarAlCarrito(
+                          producto
+                        )
+                      }
+                    >
+                      {cantidad >
+                      0 ? (
+                        <View
+                          style={
+                            styles.botonContenido
+                          }
+                        >
+                          <Text
+                            style={
+                              styles.botonAgregarTexto
+                            }
+                          >
+                            Agregar más
+                          </Text>
+
+                          <View
+                            style={
+                              styles.cantidadBadge
+                            }
+                          >
+                            <Text
+                              style={
+                                styles.cantidadTexto
+                              }
+                            >
+                              {
+                                cantidad
+                              }
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    ) : (
-                      <Text style={styles.addButtonText}>Agregar al carrito</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-        )}
+                      ) : (
+                        <Text
+                          style={
+                            styles.botonAgregarTexto
+                          }
+                        >
+                          Agregar al carrito
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              }
+            )
+          )}
+        </View>
       </ScrollView>
 
-      {/* MODAL CARRITO DE COMPRAS */}
-      <Modal visible={modalAbierto} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalDrawer}>
-            {/* CABECERA DEL MODAL */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                <Text style={styles.modalCartIcon}>🛒</Text>
-                <Text style={styles.modalTitle}>Tu Carrito</Text>
-              </View>
+      {/* =================================
+          MODAL CARRITO
+      ================================= */}
+
+      <Modal
+        visible={
+          carritoAbierto
+        }
+        transparent
+        animationType="slide"
+        onRequestClose={() =>
+          setCarritoAbierto(
+            false
+          )
+        }
+      >
+        <View
+          style={
+            styles.carritoFondo
+          }
+        >
+          <View
+            style={
+              styles.carritoPanel
+            }
+          >
+            {/* CABECERA */}
+
+            <View
+              style={
+                styles.carritoHeader
+              }
+            >
+              <Text
+                style={
+                  styles.carritoTitulo
+                }
+              >
+                🛒 Tu Carrito
+              </Text>
 
               <TouchableOpacity
-                onPress={() => setModalAbierto(false)}
-                style={styles.closeButton}
+                onPress={() =>
+                  setCarritoAbierto(
+                    false
+                  )
+                }
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <Text
+                  style={
+                    styles.cerrarCarrito
+                  }
+                >
+                  ✕
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {/* LISTA DE ITEMS */}
-            <ScrollView style={styles.modalBody}>
-              {carrito.length === 0 ? (
-                <Text style={styles.emptyCartText}>Tu carrito está vacío.</Text>
+            {/* PRODUCTOS */}
+
+            <ScrollView
+              style={
+                styles.carritoLista
+              }
+            >
+              {carrito.length ===
+              0 ? (
+                <Text
+                  style={
+                    styles.carritoVacio
+                  }
+                >
+                  Tu carrito está
+                  vacío.
+                </Text>
               ) : (
-                carrito.map((item) => (
-                  <View key={item.id} style={styles.cartItemRow}>
-                    <View style={styles.cartItemLeft}>
+                carrito.map(
+                  (item) => (
+                    <View
+                      key={
+                        item.id
+                      }
+                      style={
+                        styles.itemCarrito
+                      }
+                    >
                       <Image
-                        source={
-                          typeof item.imagen === "string"
-                            ? { uri: item.imagen }
-                            : item.imagen
+                        source={obtenerImagen(
+                          item
+                        )}
+                        style={
+                          styles.itemImagen
                         }
-                        style={styles.cartItemImage}
                       />
-                      <View style={styles.cartItemDetails}>
-                        <Text style={styles.cartItemTitle}>{item.nombre}</Text>
-                        <Text style={styles.cartItemSub}>
-                          ${(Number(item.precio) || 0).toFixed(2)} x {item.cantidad}
+
+                      <View
+                        style={
+                          styles.itemInfo
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.itemNombre
+                          }
+                        >
+                          {
+                            item.nombre
+                          }
                         </Text>
-                        <Text style={styles.cartItemTalla}>
-                          Talla:{" "}
-                          {Array.isArray(item.tallas)
-                            ? item.tallas.join(", ")
-                            : item.talla || "No especificada"}
+
+                        <Text
+                          style={
+                            styles.itemDetalle
+                          }
+                        >
+                          $
+                          {Number(
+                            item.precio
+                          ).toFixed(
+                            2
+                          )}{" "}
+                          x{" "}
+                          {
+                            item.cantidad
+                          }
                         </Text>
+
+                        <Text
+                          style={
+                            styles.itemSubtotal
+                          }
+                        >
+                          Subtotal: $
+                          {(
+                            Number(
+                              item.precio
+                            ) *
+                            item.cantidad
+                          ).toFixed(
+                            2
+                          )}
+                        </Text>
+
+                        <TouchableOpacity
+                          onPress={() =>
+                            eliminarDelCarrito(
+                              item.id
+                            )
+                          }
+                        >
+                          <Text
+                            style={
+                              styles.eliminarTexto
+                            }
+                          >
+                            Borrar
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
-
-                    <View style={styles.cartItemRight}>
-                      <Text style={styles.cartItemPrice}>
-                        ${((Number(item.precio) || 0) * item.cantidad).toFixed(2)}
-                      </Text>
-
-                      <TouchableOpacity
-                        onPress={() => eliminarDelCarrito(item.id)}
-                        style={styles.deleteBadge}
-                      >
-                        <Text style={styles.deleteBadgeText}>Borrar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
+                  )
+                )
               )}
             </ScrollView>
 
-            {/* PIE DEL MODAL */}
-            {carrito.length > 0 ? (
-              <View style={styles.modalFooter}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total:</Text>
-                  <Text style={styles.totalAmount}>
-                    ${totalCarrito.toFixed(2)}
+            {/* PARTE INFERIOR */}
+
+            {carrito.length >
+              0 && (
+              <View
+                style={
+                  styles.carritoFooter
+                }
+              >
+                <View
+                  style={
+                    styles.totalFila
+                  }
+                >
+                  <Text
+                    style={
+                      styles.totalLabel
+                    }
+                  >
+                    Total:
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.totalValor
+                    }
+                  >
+                    $
+                    {totalCarrito.toFixed(
+                      2
+                    )}
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={confirmarPedido}
-                  disabled={guardando}
+                  style={
+                    styles.botonConfirmar
+                  }
+                  onPress={
+                    confirmarPedido
+                  }
+                  disabled={
+                    guardando
+                  }
                 >
-                  {guardando ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text style={styles.confirmButtonText}>
-                      Confirmar Pedido
-                    </Text>
-                  )}
+                  <Text
+                    style={
+                      styles.botonConfirmarTexto
+                    }
+                  >
+                    {guardando
+                      ? "Procesando pedido..."
+                      : "Confirmar Pedido"}
+                  </Text>
                 </TouchableOpacity>
 
-                <View style={styles.footerActions}>
-                  <TouchableOpacity
-                    style={styles.clearCartButton}
-                    onPress={vaciarCarrito}
-                  >
-                    <Text style={styles.clearCartText}>Borrar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.returnButton}
-                    onPress={() => setModalAbierto(false)}
-                  >
-                    <Text style={styles.returnText}>Regresar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.modalFooter}>
                 <TouchableOpacity
-                  style={styles.returnButtonFull}
-                  onPress={() => setModalAbierto(false)}
+                  style={
+                    styles.botonVaciar
+                  }
+                  onPress={
+                    vaciarCarrito
+                  }
                 >
-                  <Text style={styles.returnText}>Regresar</Text>
+                  <Text
+                    style={
+                      styles.botonVaciarTexto
+                    }
+                  >
+                    Vaciar carrito
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* =================================
+          MENÚ HAMBURGUESA
+      ================================= */}
+
+      <Modal
+        visible={
+          menuAbierto
+        }
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setMenuAbierto(false)
+        }
+      >
+        <View
+          style={
+            styles.menuFondo
+          }
+        >
+          <TouchableOpacity
+            style={
+              styles.menuEspacio
+            }
+            activeOpacity={1}
+            onPress={() =>
+              setMenuAbierto(false)
+            }
+          />
+
+          <View
+            style={
+              styles.menuPanel
+            }
+          >
+            <TouchableOpacity
+              style={
+                styles.cerrarMenuBoton
+              }
+              onPress={() =>
+                setMenuAbierto(false)
+              }
+            >
+              <Text
+                style={
+                  styles.cerrarMenu
+                }
+              >
+                ✕
+              </Text>
+            </TouchableOpacity>
+
+            <Text
+              style={
+                styles.menuLogo
+              }
+            >
+              POLET PLUS
+            </Text>
+
+            <Text
+              style={
+                styles.menuUsuario
+              }
+            >
+              Hola,{" "}
+              {nombreCliente}
+            </Text>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() => {
+                setMenuAbierto(
+                  false
+                );
+
+                router.replace(
+                  "/home"
+                );
+              }}
+            >
+              <Text
+                style={
+                  styles.menuTexto
+                }
+              >
+                Inicio
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() =>
+                setMenuAbierto(
+                  false
+                )
+              }
+            >
+              <Text
+                style={
+                  styles.menuActivo
+                }
+              >
+                Catálogo
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() => {
+                setMenuAbierto(
+                  false
+                );
+
+                setCarritoAbierto(
+                  true
+                );
+              }}
+            >
+              <Text
+                style={
+                  styles.menuTexto
+                }
+              >
+                Carrito
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() => {
+                setMenuAbierto(
+                  false
+                );
+
+                router.push(
+                  "/cuenta"
+                );
+              }}
+            >
+              <Text
+                style={
+                  styles.menuTexto
+                }
+              >
+                Mi cuenta
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() => {
+                setMenuAbierto(
+                  false
+                );
+
+                router.replace(
+                  "/home"
+                );
+              }}
+            >
+              <Text
+                style={
+                  styles.menuTexto
+                }
+              >
+                Sobre nosotros
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.menuOpcion
+              }
+              onPress={() => {
+                setMenuAbierto(
+                  false
+                );
+
+                router.replace(
+                  "/home"
+                );
+              }}
+            >
+              <Text
+                style={
+                  styles.menuTexto
+                }
+              >
+                Contacto
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.menuOpcion,
+                styles.logoutOpcion,
+              ]}
+              onPress={
+                cerrarSesion
+              }
+            >
+              <Text
+                style={
+                  styles.logoutTexto
+                }
+              >
+                Cerrar sesión
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#efd2c7",
-  },
-  navbar: {
-    height: 60,
-    backgroundColor: "#ffffff",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  brandText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#AD4E4F",
-    letterSpacing: 2,
-  },
-  navRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cartIconButton: {
-    backgroundColor: "#AD4E4F",
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  cartIconText: {
-    fontSize: 18,
-    color: "#ffffff",
-  },
-  cartBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    backgroundColor: "#f59e0b",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 4,
-  },
-  cartBadgeText: {
-    color: "#ffffff",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  scrollContainer: {
-    paddingBottom: 40,
-  },
-  headerSection: {
-    paddingTop: 30,
-    paddingBottom: 20,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#AD4E4F",
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: "#4b5563",
-    marginTop: 6,
-  },
-  filterCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.6)",
-    marginHorizontal: 16,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  searchInput: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#1f2937",
-    marginBottom: 12,
-  },
-  tallasScroll: {
-    flexDirection: "row",
-  },
-  tallaPill: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
-  },
-  tallaPillActive: {
-    backgroundColor: "#AD4E4F",
-    borderColor: "#AD4E4F",
-  },
-  tallaPillText: {
-    color: "#374151",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  tallaPillTextActive: {
-    color: "#ffffff",
-    fontWeight: "bold",
-  },
-  emptyContainer: {
-    paddingVertical: 60,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#4b5563",
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 12,
-    justifyContent: "space-between", // Distribuye los elementos en pares
-  },
- productCard: {
-    width: "48%", // 48% permite que exactamente dos tarjetas entren en una fila
-    backgroundColor: "rgba(255, 255, 255, 0.55)",
-    borderRadius: 20,
-    padding: 12,
-    marginBottom: 14,
-    alignItems: "center",
-  },
-  imageContainer: {
-    width: "100%",
-    height: 180,
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  productTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-    marginTop: 12,
-    textAlign: "center",
-  },
-  productPrice: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1f2937",
-    marginTop: 6,
-  },
-  productSizes: {
-    fontSize: 13,
-    color: "#4b5563",
-    marginTop: 4,
-  },
-  addButton: {
-    backgroundColor: "#AD4E4F",
-    borderRadius: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 14,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButtonText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  addMoreRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  countCircle: {
-    backgroundColor: "#ffffff",
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  countCircleText: {
-    color: "#AD4E4F",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "flex-end",
-  },
-  modalDrawer: {
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: "85%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderColor: "#f3f4f6",
-    paddingBottom: 14,
-  },
-  modalTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  modalCartIcon: {
-    fontSize: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
-  },
-  closeButton: {
-    padding: 6,
-  },
-  closeButtonText: {
-    fontSize: 18,
-    color: "#9ca3af",
-    fontWeight: "bold",
-  },
-  modalBody: {
-    maxHeight: 320,
-    marginVertical: 12,
-  },
-  emptyCartText: {
-    textAlign: "center",
-    color: "#6b7280",
-    paddingVertical: 40,
-    fontSize: 15,
-  },
-  cartItemRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
-    padding: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  cartItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 10,
-  },
-  cartItemImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: "#ffffff",
-  },
-  cartItemDetails: {
-    flex: 1,
-  },
-  cartItemTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  cartItemSub: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: 2,
-  },
-  cartItemTalla: {
-    fontSize: 11,
-    color: "#9ca3af",
-    marginTop: 1,
-  },
-  cartItemRight: {
-    alignItems: "flex-end",
-    gap: 6,
-  },
-  cartItemPrice: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#1f2937",
-  },
-  deleteBadge: {
-    backgroundColor: "#fef2f2",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  deleteBadgeText: {
-    color: "#ef4444",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  modalFooter: {
-    borderTopWidth: 1,
-    borderColor: "#f3f4f6",
-    paddingTop: 14,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  totalLabel: {
-    fontSize: 16,
-    color: "#4b5563",
-    fontWeight: "500",
-  },
-  totalAmount: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#AD4E4F",
-  },
-  confirmButton: {
-    backgroundColor: "#AD4E4F",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  confirmButtonText: {
-    color: "#ffffff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  footerActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  clearCartButton: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  clearCartText: {
-    color: "#dc2626",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  returnButton: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  returnButtonFull: {
-    width: "100%",
-    borderRadius: 12,
-    backgroundColor: "#f3f4f6",
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  returnText: {
-    color: "#374151",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
+// ==========================================
+// ESTILOS
+// ==========================================
+
+const styles =
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor:
+        "#efd2c7",
+    },
+
+    // CARGANDO
+
+    cargando: {
+      flex: 1,
+      justifyContent:
+        "center",
+      alignItems: "center",
+      backgroundColor:
+        "#efd2c7",
+    },
+
+    cargandoTexto: {
+      marginTop: 15,
+      color: "#AD4E4F",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+
+    // NAVBAR
+
+    navbar: {
+      backgroundColor: "#fff",
+
+      paddingTop: 52,
+      paddingBottom: 14,
+      paddingHorizontal: 20,
+
+      flexDirection: "row",
+
+      justifyContent:
+        "space-between",
+
+      alignItems: "center",
+    },
+
+    logo: {
+      color: "#AD4E4F",
+      fontSize: 23,
+      fontWeight: "bold",
+      letterSpacing: 2,
+    },
+
+    navbarDerecha: {
+      flexDirection: "row",
+      gap: 8,
+    },
+
+    botonNavbar: {
+      width: 44,
+      height: 44,
+
+      borderRadius: 10,
+
+      backgroundColor:
+        "#AD4E4F",
+
+      justifyContent:
+        "center",
+
+      alignItems: "center",
+    },
+
+    carritoIcono: {
+      fontSize: 20,
+    },
+
+    menuIcono: {
+      color: "#fff",
+      fontSize: 24,
+      fontWeight: "bold",
+    },
+
+    contador: {
+      position: "absolute",
+
+      right: -6,
+      top: -6,
+
+      width: 21,
+      height: 21,
+
+      borderRadius: 11,
+
+      backgroundColor:
+        "#f59e0b",
+
+      justifyContent:
+        "center",
+
+      alignItems: "center",
+    },
+
+    contadorTexto: {
+      color: "#fff",
+      fontSize: 11,
+      fontWeight: "bold",
+    },
+
+    // ENCABEZADO
+
+    encabezado: {
+      alignItems: "center",
+
+      paddingTop: 40,
+      paddingBottom: 25,
+      paddingHorizontal: 20,
+    },
+
+    titulo: {
+      color: "#AD4E4F",
+      fontSize: 36,
+      fontWeight: "bold",
+    },
+
+    subtitulo: {
+      marginTop: 8,
+
+      color: "#666",
+      fontSize: 15,
+      textAlign: "center",
+    },
+
+    // FILTROS
+
+    filtrosContenedor: {
+      marginHorizontal: 20,
+
+      padding: 18,
+
+      borderRadius: 18,
+
+      backgroundColor:
+        "rgba(255,255,255,0.65)",
+    },
+
+    buscador: {
+      backgroundColor: "#fff",
+
+      borderWidth: 1,
+      borderColor: "#ddd",
+
+      borderRadius: 12,
+
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+
+      color: "#333",
+      fontSize: 15,
+    },
+
+    filtroTitulo: {
+      marginTop: 18,
+      marginBottom: 10,
+
+      fontWeight: "600",
+      color: "#555",
+    },
+
+    tallasContenedor: {
+      gap: 8,
+      paddingRight: 10,
+    },
+
+    tallaBoton: {
+      paddingHorizontal: 17,
+      paddingVertical: 10,
+
+      borderRadius: 20,
+
+      borderWidth: 1,
+    },
+
+    tallaActiva: {
+      backgroundColor:
+        "#AD4E4F",
+
+      borderColor:
+        "#AD4E4F",
+    },
+
+    tallaInactiva: {
+      backgroundColor: "#fff",
+
+      borderColor: "#ddd",
+    },
+
+    tallaTexto: {
+      fontWeight: "600",
+    },
+
+    tallaTextoActivo: {
+      color: "#fff",
+    },
+
+    tallaTextoInactivo: {
+      color: "#555",
+    },
+
+    // PRODUCTOS
+
+    productosSeccion: {
+      paddingHorizontal: 20,
+      paddingVertical: 30,
+    },
+
+    sinProductos: {
+      paddingVertical: 60,
+      textAlign: "center",
+
+      color: "#666",
+      fontSize: 16,
+    },
+
+    productoCard: {
+      backgroundColor:
+        "rgba(255,255,255,0.65)",
+
+      borderRadius: 20,
+
+      padding: 15,
+
+      marginBottom: 25,
+
+      alignItems: "center",
+    },
+
+    imagenContenedor: {
+      width: "100%",
+      height: 390,
+
+      borderRadius: 16,
+
+      overflow: "hidden",
+
+      backgroundColor: "#fff",
+
+      justifyContent:
+        "center",
+
+      alignItems: "center",
+    },
+
+    productoImagen: {
+      width: "100%",
+      height: "100%",
+
+      resizeMode: "contain",
+    },
+
+    productoNombre: {
+      marginTop: 16,
+
+      color: "#222",
+
+      fontSize: 20,
+      fontWeight: "600",
+
+      textAlign: "center",
+    },
+
+    productoPrecio: {
+      marginTop: 8,
+
+      fontSize: 18,
+      fontWeight: "500",
+
+      color: "#333",
+    },
+
+    productoTalla: {
+      marginTop: 7,
+
+      color: "#666",
+      fontSize: 14,
+    },
+
+    botonAgregar: {
+      marginTop: 17,
+
+      backgroundColor:
+        "#AD4E4F",
+
+      borderRadius: 25,
+
+      paddingHorizontal: 25,
+      paddingVertical: 13,
+
+      minWidth: 190,
+
+      alignItems: "center",
+    },
+
+    botonContenido: {
+      flexDirection: "row",
+
+      alignItems: "center",
+
+      gap: 10,
+    },
+
+    botonAgregarTexto: {
+      color: "#fff",
+
+      fontWeight: "bold",
+      fontSize: 15,
+    },
+
+    cantidadBadge: {
+      width: 25,
+      height: 25,
+
+      borderRadius: 13,
+
+      backgroundColor: "#fff",
+
+      justifyContent:
+        "center",
+
+      alignItems: "center",
+    },
+
+    cantidadTexto: {
+      color: "#AD4E4F",
+
+      fontWeight: "bold",
+
+      fontSize: 12,
+    },
+
+    // CARRITO
+
+    carritoFondo: {
+      flex: 1,
+
+      backgroundColor:
+        "rgba(0,0,0,0.45)",
+
+      justifyContent: "flex-end",
+    },
+
+    carritoPanel: {
+      height: "90%",
+
+      backgroundColor: "#fff",
+
+      borderTopLeftRadius: 25,
+      borderTopRightRadius: 25,
+
+      padding: 22,
+    },
+
+    carritoHeader: {
+      flexDirection: "row",
+
+      justifyContent:
+        "space-between",
+
+      alignItems: "center",
+
+      paddingBottom: 15,
+
+      borderBottomWidth: 1,
+      borderBottomColor: "#eee",
+    },
+
+    carritoTitulo: {
+      color: "#333",
+
+      fontSize: 21,
+      fontWeight: "bold",
+    },
+
+    cerrarCarrito: {
+      color: "#AD4E4F",
+
+      fontSize: 25,
+    },
+
+    carritoLista: {
+      flex: 1,
+
+      marginTop: 15,
+    },
+
+    carritoVacio: {
+      marginTop: 70,
+
+      textAlign: "center",
+
+      color: "#777",
+      fontSize: 16,
+    },
+
+    itemCarrito: {
+      flexDirection: "row",
+
+      padding: 12,
+
+      marginBottom: 12,
+
+      borderRadius: 14,
+
+      backgroundColor:
+        "#f8f8f8",
+    },
+
+    itemImagen: {
+      width: 80,
+      height: 90,
+
+      backgroundColor: "#fff",
+
+      borderRadius: 10,
+
+      resizeMode: "contain",
+    },
+
+    itemInfo: {
+      flex: 1,
+
+      marginLeft: 13,
+
+      justifyContent:
+        "center",
+    },
+
+    itemNombre: {
+      color: "#333",
+
+      fontSize: 15,
+      fontWeight: "bold",
+    },
+
+    itemDetalle: {
+      marginTop: 5,
+
+      color: "#666",
+    },
+
+    itemSubtotal: {
+      marginTop: 4,
+
+      color: "#333",
+      fontWeight: "600",
+    },
+
+    eliminarTexto: {
+      marginTop: 7,
+
+      color: "#dc2626",
+
+      fontWeight: "600",
+    },
+
+    carritoFooter: {
+      paddingTop: 15,
+
+      borderTopWidth: 1,
+      borderTopColor: "#eee",
+    },
+
+    totalFila: {
+      flexDirection: "row",
+
+      justifyContent:
+        "space-between",
+
+      alignItems: "center",
+
+      marginBottom: 15,
+    },
+
+    totalLabel: {
+      color: "#666",
+
+      fontSize: 16,
+    },
+
+    totalValor: {
+      color: "#AD4E4F",
+
+      fontSize: 25,
+      fontWeight: "bold",
+    },
+
+    botonConfirmar: {
+      backgroundColor:
+        "#AD4E4F",
+
+      borderRadius: 12,
+
+      paddingVertical: 14,
+
+      alignItems: "center",
+    },
+
+    botonConfirmarTexto: {
+      color: "#fff",
+
+      fontWeight: "bold",
+
+      fontSize: 16,
+    },
+
+    botonVaciar: {
+      marginTop: 10,
+
+      borderWidth: 1,
+      borderColor: "#ef4444",
+
+      borderRadius: 12,
+
+      paddingVertical: 12,
+
+      alignItems: "center",
+    },
+
+    botonVaciarTexto: {
+      color: "#dc2626",
+
+      fontWeight: "600",
+    },
+
+    // MENÚ
+
+    menuFondo: {
+      flex: 1,
+
+      flexDirection: "row",
+
+      backgroundColor:
+        "rgba(0,0,0,0.4)",
+    },
+
+    menuEspacio: {
+      width: "25%",
+    },
+
+    menuPanel: {
+      width: "75%",
+      height: "100%",
+
+      backgroundColor: "#fff",
+
+      paddingTop: 55,
+      paddingHorizontal: 25,
+    },
+
+    cerrarMenuBoton: {
+      alignSelf: "flex-end",
+    },
+
+    cerrarMenu: {
+      color: "#AD4E4F",
+
+      fontSize: 28,
+    },
+
+    menuLogo: {
+      marginTop: 20,
+
+      color: "#AD4E4F",
+
+      fontSize: 24,
+      fontWeight: "bold",
+
+      letterSpacing: 2,
+    },
+
+    menuUsuario: {
+      marginTop: 5,
+      marginBottom: 25,
+
+      color: "#777",
+    },
+
+    menuOpcion: {
+      paddingVertical: 17,
+
+      borderBottomWidth: 1,
+      borderBottomColor: "#eee",
+    },
+
+    menuTexto: {
+      color: "#444",
+
+      fontSize: 17,
+    },
+
+    menuActivo: {
+      color: "#AD4E4F",
+
+      fontSize: 17,
+      fontWeight: "bold",
+    },
+
+    logoutOpcion: {
+      marginTop: 20,
+    },
+
+    logoutTexto: {
+      color: "#AD4E4F",
+
+      fontSize: 17,
+      fontWeight: "bold",
+    },
+  });

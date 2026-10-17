@@ -19,7 +19,8 @@ export default function Login() {
   const [cargando, setCargando] = useState(false);
 
   const manejarLogin = async () => {
-    if (!correo || !password) {
+    // Validar campos vacíos
+    if (!correo.trim() || !password) {
       Alert.alert(
         "Campos incompletos",
         "Por favor completa todos los campos."
@@ -30,6 +31,7 @@ export default function Login() {
     try {
       setCargando(true);
 
+      // Autenticar usuario con Firebase
       await signInWithEmailAndPassword(
         auth,
         correo.trim(),
@@ -41,9 +43,14 @@ export default function Login() {
         "Inicio de sesión exitoso."
       );
 
+      // Enviar a inicio para verificar el rol
       router.replace("/inicio");
+
     } catch (error: any) {
-      console.log(error);
+      console.log(
+        "Error al iniciar sesión:",
+        error
+      );
 
       if (
         error.code === "auth/invalid-credential" ||
@@ -54,6 +61,7 @@ export default function Login() {
           "Error",
           "Correo o contraseña incorrectos."
         );
+
       } else if (
         error.code === "auth/invalid-email"
       ) {
@@ -61,12 +69,22 @@ export default function Login() {
           "Error",
           "El correo electrónico no es válido."
         );
+
+      } else if (
+        error.code === "auth/too-many-requests"
+      ) {
+        Alert.alert(
+          "Error",
+          "Se realizaron demasiados intentos. Intenta nuevamente más tarde."
+        );
+
       } else {
         Alert.alert(
           "Error",
-          "No se pudo iniciar sesión."
+          "No se pudo iniciar sesión. Intenta nuevamente."
         );
       }
+
     } finally {
       setCargando(false);
     }
@@ -74,24 +92,30 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
+
+      {/* LOGO */}
       <Text style={styles.logo}>
         POLET PLUS
       </Text>
 
+      {/* TÍTULO */}
       <Text style={styles.titulo}>
         Iniciar sesión
       </Text>
 
+      {/* CORREO */}
       <TextInput
         style={styles.input}
         placeholder="Correo electrónico"
         placeholderTextColor="#999"
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
         value={correo}
         onChangeText={setCorreo}
       />
 
+      {/* CONTRASEÑA */}
       <TextInput
         style={styles.input}
         placeholder="Contraseña"
@@ -101,8 +125,12 @@ export default function Login() {
         onChangeText={setPassword}
       />
 
+      {/* BOTÓN LOGIN */}
       <TouchableOpacity
-        style={styles.boton}
+        style={[
+          styles.boton,
+          cargando && styles.botonDeshabilitado,
+        ]}
         onPress={manejarLogin}
         disabled={cargando}
       >
@@ -113,6 +141,7 @@ export default function Login() {
         </Text>
       </TouchableOpacity>
 
+      {/* IR A REGISTRO */}
       <TouchableOpacity
         onPress={() =>
           router.push("/registro")
@@ -123,13 +152,17 @@ export default function Login() {
         </Text>
       </TouchableOpacity>
 
+      {/* VOLVER */}
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={() =>
+          router.replace("/")
+        }
       >
         <Text style={styles.volver}>
-          ← Volver
+          ← Volver al inicio
         </Text>
       </TouchableOpacity>
+
     </View>
   );
 }
@@ -148,6 +181,7 @@ const styles = StyleSheet.create({
     color: "#AD4E4F",
     textAlign: "center",
     marginBottom: 15,
+    letterSpacing: 2,
   },
 
   titulo: {
@@ -167,6 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 15,
     fontSize: 16,
+    color: "#333",
   },
 
   boton: {
@@ -175,6 +210,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     marginTop: 10,
+  },
+
+  botonDeshabilitado: {
+    opacity: 0.6,
   },
 
   textoBoton: {

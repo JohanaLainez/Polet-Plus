@@ -41,7 +41,7 @@ export default function Login() {
         "Inicio de sesión exitoso."
       );
 
-      router.replace("/");
+      router.replace("/inicio");
     } catch (error: any) {
       console.log(error);
 

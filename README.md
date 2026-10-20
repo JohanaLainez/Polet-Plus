@@ -42,6 +42,10 @@ Desarrollar una aplicación web para la gestión de una tienda de ropa en línea
 Enlace publico:
 https://polet-plus.vercel.app/
 
+Enlace video de defensa fase 3: https://drive.google.com/file/d/1Wu3EbW3cWkPC6ok3L2FmGEIld4fLdmxv/view?usp=sharing
+
+Enlace documentación fase 3: https://drive.google.com/file/d/1rYI6IX0OhqMwBZau72JWvknG8DWBsx5p/view?usp=sharing
+
 ## Integrantes del proyecto
 
 1. Johana Estefani Ramirez Lainez RL242914 
@@ -61,3 +65,4 @@ Las páginas y componentes visuales se encuentran principalmente en:
 ```text
 app/
 components/
+

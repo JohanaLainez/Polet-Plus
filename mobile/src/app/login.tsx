@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,17 +9,42 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
 
-import { auth } from "../lib/firebase";
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+} from "firebase/auth";
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
+
+import { auth, db } from "../lib/firebase";
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [cargandoGoogle, setCargandoGoogle] = useState(false);
 
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        "118095166863-1b6nvnfragv10g1fanhohmjog39ts2sd.apps.googleusercontent.com",
+    });
+  }, []);
+
+  // LOGIN NORMAL CON CORREO Y CONTRASEÑA
   const manejarLogin = async () => {
-    // Validar campos vacíos
     if (!correo.trim() || !password) {
       Alert.alert(
         "Campos incompletos",
@@ -31,7 +56,6 @@ export default function Login() {
     try {
       setCargando(true);
 
-      // Autenticar usuario con Firebase
       await signInWithEmailAndPassword(
         auth,
         correo.trim(),
@@ -43,9 +67,7 @@ export default function Login() {
         "Inicio de sesión exitoso."
       );
 
-      // Enviar a inicio para verificar el rol
       router.replace("/inicio");
-
     } catch (error: any) {
       console.log(
         "Error al iniciar sesión:",
@@ -61,7 +83,6 @@ export default function Login() {
           "Error",
           "Correo o contraseña incorrectos."
         );
-
       } else if (
         error.code === "auth/invalid-email"
       ) {
@@ -69,7 +90,6 @@ export default function Login() {
           "Error",
           "El correo electrónico no es válido."
         );
-
       } else if (
         error.code === "auth/too-many-requests"
       ) {
@@ -77,16 +97,144 @@ export default function Login() {
           "Error",
           "Se realizaron demasiados intentos. Intenta nuevamente más tarde."
         );
-
       } else {
         Alert.alert(
           "Error",
           "No se pudo iniciar sesión. Intenta nuevamente."
         );
       }
-
     } finally {
       setCargando(false);
+    }
+  };
+
+  // LOGIN CON GOOGLE
+  const manejarLoginGoogle = async () => {
+    try {
+      setCargandoGoogle(true);
+
+      // Verificar Google Play Services
+      await GoogleSignin.hasPlayServices();
+
+      // Abrir selector de cuenta Google
+      const resultadoGoogle =
+        await GoogleSignin.signIn();
+
+      // Si el usuario canceló
+      if (resultadoGoogle.type !== "success") {
+        return;
+      }
+
+      // Obtener tokens después del login
+      const tokens =
+        await GoogleSignin.getTokens();
+
+      const idToken = tokens.idToken;
+
+      if (!idToken) {
+        throw new Error(
+          "No se pudo obtener el token de Google."
+        );
+      }
+
+      // Crear credencial de Firebase
+      // usando el token de Google
+      const credencialGoogle =
+        GoogleAuthProvider.credential(
+          idToken
+        );
+
+      // Iniciar sesión en Firebase
+      const resultadoFirebase =
+        await signInWithCredential(
+          auth,
+          credencialGoogle
+        );
+
+      const usuario =
+        resultadoFirebase.user;
+
+      // Buscar usuario en Firestore
+      const referenciaUsuario = doc(
+        db,
+        "users",
+        usuario.uid
+      );
+
+      const documentoUsuario =
+        await getDoc(
+          referenciaUsuario
+        );
+
+      // Si es la primera vez que entra
+      // con Google, crear usuario
+      if (!documentoUsuario.exists()) {
+        await setDoc(
+          referenciaUsuario,
+          {
+            nombre:
+              usuario.displayName ||
+              "Cliente",
+
+            email:
+              usuario.email || "",
+
+            rol: "cliente",
+
+            fechaRegistro:
+              serverTimestamp(),
+          }
+        );
+      }
+
+      Alert.alert(
+        "Bienvenido",
+        "Inicio de sesión con Google exitoso."
+      );
+
+      // Verificar rol y redirigir
+      router.replace("/inicio");
+
+    } catch (error: any) {
+      console.log(
+        "Error Google Sign-In:",
+        error
+      );
+
+      if (
+        error.code ===
+        statusCodes.SIGN_IN_CANCELLED
+      ) {
+        console.log(
+          "Inicio de sesión con Google cancelado."
+        );
+
+      } else if (
+        error.code ===
+        statusCodes.IN_PROGRESS
+      ) {
+        Alert.alert(
+          "Espera",
+          "Ya hay un inicio de sesión en proceso."
+        );
+
+      } else if (
+        error.code ===
+        statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+      ) {
+        Alert.alert(
+          "Error",
+          "Google Play Services no está disponible."
+        );
+
+      } else {
+        Alert.alert(
+          "Error",
+          "No se pudo iniciar sesión con Google."
+        );
+      }
+    } finally {
+      setCargandoGoogle(false);
     }
   };
 
@@ -125,14 +273,18 @@ export default function Login() {
         onChangeText={setPassword}
       />
 
-      {/* BOTÓN LOGIN */}
+      {/* LOGIN NORMAL */}
       <TouchableOpacity
         style={[
           styles.boton,
-          cargando && styles.botonDeshabilitado,
+          cargando &&
+            styles.botonDeshabilitado,
         ]}
         onPress={manejarLogin}
-        disabled={cargando}
+        disabled={
+          cargando ||
+          cargandoGoogle
+        }
       >
         <Text style={styles.textoBoton}>
           {cargando
@@ -141,7 +293,42 @@ export default function Login() {
         </Text>
       </TouchableOpacity>
 
-      {/* IR A REGISTRO */}
+      {/* SEPARADOR */}
+      <View style={styles.separador}>
+        <View style={styles.linea} />
+
+        <Text style={styles.textoSeparador}>
+          o
+        </Text>
+
+        <View style={styles.linea} />
+      </View>
+
+      {/* LOGIN GOOGLE */}
+      <TouchableOpacity
+        style={[
+          styles.botonGoogle,
+          cargandoGoogle &&
+            styles.botonDeshabilitado,
+        ]}
+        onPress={manejarLoginGoogle}
+        disabled={
+          cargandoGoogle ||
+          cargando
+        }
+      >
+        <Text style={styles.logoGoogle}>
+          G
+        </Text>
+
+        <Text style={styles.textoGoogle}>
+          {cargandoGoogle
+            ? "Conectando..."
+            : "Continuar con Google"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* REGISTRO */}
       <TouchableOpacity
         onPress={() =>
           router.push("/registro")
@@ -220,6 +407,47 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 17,
     fontWeight: "bold",
+  },
+
+  separador: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+
+  linea: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#c99",
+  },
+
+  textoSeparador: {
+    marginHorizontal: 12,
+    color: "#777",
+  },
+
+  botonGoogle: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  logoGoogle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginRight: 12,
+    color: "#4285F4",
+  },
+
+  textoGoogle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
   },
 
   registro: {

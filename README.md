@@ -46,9 +46,9 @@ Enlace documentación foro 2: https://drive.google.com/file/d/1HZ7qqsZrqGXcCwVXe
 
 Enlace video de defensa foro 2: https://drive.google.com/file/d/18jEF6iBRAXjPa1qN7OpFGLXR9TX90ic5/view?usp=sharing
 
-Enlace video de defensa fase 3: https://drive.google.com/file/d/1Wu3EbW3cWkPC6ok3L2FmGEIld4fLdmxv/view?usp=sharing
+Enlace video de defensa foro 1 : https://drive.google.com/file/d/1Wu3EbW3cWkPC6ok3L2FmGEIld4fLdmxv/view?usp=sharing
 
-Enlace documentación fase 3: https://drive.google.com/file/d/1rYI6IX0OhqMwBZau72JWvknG8DWBsx5p/view?usp=sharing
+Enlace documentación foro 1: https://drive.google.com/file/d/1rYI6IX0OhqMwBZau72JWvknG8DWBsx5p/view?usp=sharing
 
 
 

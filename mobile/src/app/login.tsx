@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   View,
   Text,
@@ -33,9 +34,14 @@ import { auth, db } from "../lib/firebase";
 export default function Login() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
-  const [cargando, setCargando] = useState(false);
-  const [cargandoGoogle, setCargandoGoogle] = useState(false);
 
+  const [cargando, setCargando] = useState(false);
+  const [cargandoGoogle, setCargandoGoogle] =
+    useState(false);
+
+  // =========================
+  // CONFIGURAR GOOGLE SIGN-IN
+  // =========================
   useEffect(() => {
     GoogleSignin.configure({
       webClientId:
@@ -43,13 +49,16 @@ export default function Login() {
     });
   }, []);
 
-  // LOGIN NORMAL CON CORREO Y CONTRASEÑA
+  // =========================
+  // LOGIN NORMAL
+  // =========================
   const manejarLogin = async () => {
     if (!correo.trim() || !password) {
       Alert.alert(
         "Campos incompletos",
         "Por favor completa todos los campos."
       );
+
       return;
     }
 
@@ -75,23 +84,28 @@ export default function Login() {
       );
 
       if (
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/wrong-password" ||
-        error.code === "auth/user-not-found"
+        error.code ===
+          "auth/invalid-credential" ||
+        error.code ===
+          "auth/wrong-password" ||
+        error.code ===
+          "auth/user-not-found"
       ) {
         Alert.alert(
           "Error",
           "Correo o contraseña incorrectos."
         );
       } else if (
-        error.code === "auth/invalid-email"
+        error.code ===
+        "auth/invalid-email"
       ) {
         Alert.alert(
           "Error",
           "El correo electrónico no es válido."
         );
       } else if (
-        error.code === "auth/too-many-requests"
+        error.code ===
+        "auth/too-many-requests"
       ) {
         Alert.alert(
           "Error",
@@ -108,24 +122,38 @@ export default function Login() {
     }
   };
 
+  // =========================
   // LOGIN CON GOOGLE
+  // =========================
   const manejarLoginGoogle = async () => {
     try {
       setCargandoGoogle(true);
 
-      // Verificar Google Play Services
+      // Verificar que Google Play Services esté disponible
       await GoogleSignin.hasPlayServices();
 
-      // Abrir selector de cuenta Google
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+
+      }
+
+      // =========================
+      // MOSTRAR SELECTOR DE CUENTAS
+      // =========================
       const resultadoGoogle =
         await GoogleSignin.signIn();
 
-      // Si el usuario canceló
-      if (resultadoGoogle.type !== "success") {
+      // Si el usuario cancela
+      if (
+        resultadoGoogle.type !== "success"
+      ) {
         return;
       }
 
-      // Obtener tokens después del login
+      // =========================
+      // OBTENER TOKEN DE GOOGLE
+      // =========================
       const tokens =
         await GoogleSignin.getTokens();
 
@@ -137,14 +165,17 @@ export default function Login() {
         );
       }
 
-      // Crear credencial de Firebase
-      // usando el token de Google
+      // =========================
+      // CREAR CREDENCIAL FIREBASE
+      // =========================
       const credencialGoogle =
         GoogleAuthProvider.credential(
           idToken
         );
 
-      // Iniciar sesión en Firebase
+      // =========================
+      // INICIAR SESIÓN EN FIREBASE
+      // =========================
       const resultadoFirebase =
         await signInWithCredential(
           auth,
@@ -154,7 +185,9 @@ export default function Login() {
       const usuario =
         resultadoFirebase.user;
 
-      // Buscar usuario en Firestore
+      // =========================
+      // BUSCAR USUARIO EN FIRESTORE
+      // =========================
       const referenciaUsuario = doc(
         db,
         "users",
@@ -166,8 +199,9 @@ export default function Login() {
           referenciaUsuario
         );
 
-      // Si es la primera vez que entra
-      // con Google, crear usuario
+      // =========================
+      // CREAR USUARIO SI NO EXISTE
+      // =========================
       if (!documentoUsuario.exists()) {
         await setDoc(
           referenciaUsuario,
@@ -192,9 +226,9 @@ export default function Login() {
         "Inicio de sesión con Google exitoso."
       );
 
-      // Verificar rol y redirigir
+      // /inicio verificará si es
+      // administrador o cliente
       router.replace("/inicio");
-
     } catch (error: any) {
       console.log(
         "Error Google Sign-In:",
@@ -208,7 +242,6 @@ export default function Login() {
         console.log(
           "Inicio de sesión con Google cancelado."
         );
-
       } else if (
         error.code ===
         statusCodes.IN_PROGRESS
@@ -217,7 +250,6 @@ export default function Login() {
           "Espera",
           "Ya hay un inicio de sesión en proceso."
         );
-
       } else if (
         error.code ===
         statusCodes.PLAY_SERVICES_NOT_AVAILABLE
@@ -226,7 +258,6 @@ export default function Login() {
           "Error",
           "Google Play Services no está disponible."
         );
-
       } else {
         Alert.alert(
           "Error",
@@ -304,7 +335,7 @@ export default function Login() {
         <View style={styles.linea} />
       </View>
 
-      {/* LOGIN GOOGLE */}
+      {/* LOGIN CON GOOGLE */}
       <TouchableOpacity
         style={[
           styles.botonGoogle,

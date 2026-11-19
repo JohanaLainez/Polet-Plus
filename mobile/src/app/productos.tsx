@@ -47,6 +47,7 @@ const IMAGENES_LOCALES: Record<string, number> = {
   "Vestido fucsia.png": require("../../assets/images/Vestido fucsia.png"),
   "Vestido largo negro.jpeg": require("../../assets/images/Vestido largo negro.jpeg"),
   "Vestido playero.png": require("../../assets/images/Vestido playero.png"),
+  "Camisa-Hello-kitty.jpeg": require("../../assets/images/Camisa-Hello-kitty.jpeg"),
 };
 
 type Producto = {

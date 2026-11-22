@@ -58,7 +58,15 @@ Enlace documentación foro 1: https://drive.google.com/file/d/1rYI6IX0OhqMwBZau7
 2. Jafet Bezaleel Rivera Reinado RR231780 
 3. Jeferson Wilfredo Cruz Hernández CH231820 
 4. Daniel José Menjívar Escobar ME180718
-5. Alan Isai Delgado Elias DE232709 
+5. Alan Isai Delgado Elias DE232709
+
+## Licencia
+
+Este proyecto académico está disponible bajo la licencia **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
+
+Se permite compartir y adaptar el contenido con atribución, únicamente para fines no comerciales y manteniendo la misma licencia.
+
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 ## Arquitectura del proyecto
 
@@ -71,4 +79,5 @@ Las páginas y componentes visuales se encuentran principalmente en:
 ```text
 app/
 components/
+
 

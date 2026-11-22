@@ -60,6 +60,12 @@ Enlace documentación foro 1: https://drive.google.com/file/d/1rYI6IX0OhqMwBZau7
 4. Daniel José Menjívar Escobar ME180718
 5. Alan Isai Delgado Elias DE232709
 
+## Mockups
+
+Los mockups del proyecto Polet Plus fueron diseñados en Figma.
+
+https://www.figma.com/design/Iw2VcnuhH97Vuob6WyjSyW/Sistema-Web-y-M%C3%B3vil-para-Gesti%C3%B3n-de-Tienda-de-Ropa?node-id=77-1042&t=sZKuAxMkSSsHq3xs-1
+
 ## Licencia
 
 Este proyecto académico está disponible bajo la licencia **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
